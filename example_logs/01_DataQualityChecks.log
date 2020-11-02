@@ -1,0 +1,69 @@
+1                                                          The SAS System                             16:04 Monday, October 19, 2020
+
+NOTE: Unable to open SASUSER.REGSTRY. WORK.REGSTRY will be opened instead.
+NOTE: All registry changes will be lost at the end of the session.
+
+WARNING: Unable to copy SASUSER registry to WORK registry. Because of this, you will not see registry customizations during this 
+         session.
+NOTE: Unable to open SASUSER.PROFILE. WORK.PROFILE will be opened instead.
+NOTE: All profile changes will be lost at the end of the session.
+NOTE: Copyright (c) 2002-2012 by SAS Institute Inc., Cary, NC, USA. 
+NOTE: SAS (r) Proprietary Software 9.4 (TS1M3) 
+      Licensed to MATHEMATICA POLICY RESEARCH INC, Site 70083794.
+NOTE: This session is executing on the X64_8PRO  platform.
+
+
+
+NOTE: Updated analytical products:
+      
+      SAS/STAT 14.1
+      SAS/ETS 14.1
+      SAS/IML 14.1
+
+NOTE: Additional host information:
+
+ X64_8PRO WIN 6.2.9200  Workstation
+
+NOTE: SAS initialization used:
+      real time           0.26 seconds
+      cpu time            0.15 seconds
+      
+1          *********************************************************************************;
+2          * PROGRAM:  01_DataQualityChecks.sas                                             ;
+3          * PURPOSE:  Look over IPUMS data and run quality checks, freqs, etc.             ;
+4          * DATE:     December 2019                                                        ;
+5          * AUTHOR:   Maria Cupples Hudson                                                 ;
+6          * INPUT:    SAS datasets downloaded from IPUMS                                   ;
+7          * OUTPUT:   Merged dataset with household and person data                        ;
+8          *           Spreadsheet with QA frequencies.                                     ;
+9          * UPDATED:                                                                       ;
+10         *********************************************************************************;
+11         ods _all_ close; ods listing;
+12         
+13         options nocenter mlogic mprint noxwait noxsync nofmterr
+14                 formchar='|----|+|---+=|-/\<>*' ls=150;
+15         
+16         * For testing;
+17         *options obs=10000;
+18         
+19         %let top_folder = N:\Project\50890_1115_DSC\NJ1\700_Enrollment_impact\T07.710_Build_estimation_framework\BY\Data and programs;
+20         
+21         * The ACS year we are processing;
+22         %let year = 2017;
+23         
+24         proc printto log="&top_folder\Programs_ACS&year.\01_DataQualityChecks_&year..log"
+25                    print="&top_folder\Programs_ACS&year.\01_DataQualityChecks_&year..lst" new;
+26         run;
+2 The SAS System                                                                                                        16:04 Monday, October 19, 2020
+
+
+NOTE: PROCEDURE PRINTTO used (Total process time):
+      real time           0.04 seconds
+      cpu time            0.00 seconds
+      
+
+NOTE: SAS Institute Inc., SAS Campus Drive, Cary, NC USA 27513-2414
+NOTE: The SAS System used:
+      real time           8:49.89
+      cpu time            4:12.49
+      

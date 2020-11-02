@@ -1,0 +1,565 @@
+1                                                          The SAS System                             13:38 Monday, November 2, 2020
+
+NOTE: Unable to open SASUSER.REGSTRY. WORK.REGSTRY will be opened instead.
+NOTE: All registry changes will be lost at the end of the session.
+
+WARNING: Unable to copy SASUSER registry to WORK registry. Because of this, you will not see registry customizations during this 
+         session.
+NOTE: Unable to open SASUSER.PROFILE. WORK.PROFILE will be opened instead.
+NOTE: All profile changes will be lost at the end of the session.
+NOTE: Copyright (c) 2002-2012 by SAS Institute Inc., Cary, NC, USA. 
+NOTE: SAS (r) Proprietary Software 9.4 (TS1M3) 
+      Licensed to MATHEMATICA POLICY RESEARCH INC, Site 70083794.
+NOTE: This session is executing on the X64_8PRO  platform.
+
+
+
+NOTE: Updated analytical products:
+      
+      SAS/STAT 14.1
+      SAS/ETS 14.1
+      SAS/IML 14.1
+
+NOTE: Additional host information:
+
+ X64_8PRO WIN 6.2.9200  Workstation
+
+NOTE: SAS initialization used:
+      real time           1.09 seconds
+      cpu time            0.87 seconds
+      
+1          **********************************************************************************;
+2          ** Title:   check_all_logs.sas                                                  **;
+3          ** Author:  Maria Cupples Hudson                                                **;
+4          ** Date:    April 18, 2007                                                      **;
+5          ** Purpose: To search all log files for errors, warnings, and uninitialized     **;
+6          **          variables.                                                          **;
+7          ** Notes:   You can call the log-checking macro for as many subfolders as you   **;
+8          **          need to.  To find the place where these are called, search for the  **;
+9          **          phrase: HERE IS WHERE YOU CALL THE LOG-CHECKING MACRO and updated   **;
+10         **          or add to the macro calls.                                          **;
+11         ** Updates: 06/24/09 modified to work for SESTAT                                **;
+12         **          04/05/13 moddified to search for unable                             **;
+13         **          11/02/20 moddified to search for not exist and to be less project-  **;
+14         **                   specific.                                                  **;
+15         **********************************************************************************;
+16         
+17         options ls = 150  pagesize=max;
+18         
+19         * Path name where this program will be stored and used. ;
+20         * NOTE that this program is set up to check logs in either the current folder or a;
+21         *      subfolder of the current folder                                            ;
+22         * ALSO NOTE that you need to be careful if you pathname has ampersands, quotation ;
+23         *           marks, or other punctuation. If so, use the %str() or %nrbquote()     ;
+24         *           notations to make sure SAS sees this as a file path. This will be     ;
+25         *           resolved as a part of a directorys statement later. Very important.   ;
+26         %let path = C:\Users\mhudson\marias_projects\SAS_Log_Checker;
+27         
+28         * this macro counts the observations in a dataset and returns a global macro variable;
+29         %macro numobs(dsn,nbrobs);
+30           %global &nbrobs;
+31           %let datasetid=%sysfunc(open(&dsn));
+32           %let &nbrobs=%sysfunc(attrn(&datasetid,nlobs));
+33           %let closing_code=%sysfunc(close(&datasetid));
+34         %mend numobs;
+35         
+36         %let folder=example_logs;
+37         %macro foldercheck(folder=);
+38         
+39           * increment the folder count so we can track folders without  ;
+40           * depending on folder names to be legitimate SAS names.       ;
+41           %let folder_count = %eval(&folder_count + 1);
+42         
+43           * Change the logpath and lstpath macro variables if you store ;
+44           * your log and lst files in different locations. O/W this will;
+45           * assume that log and lst files are kept in the same folder.  ;
+46           %let logpath = &path.\&folder;
+47           %let lstpath = &path.\&folder;
+48         
+49           * Create a listing of all log files in the folder.  We will   ;
+50           * check every log file in the folder.                         ;
+51         
+52           * The DM statement Submits SAS Program Editor, Log, Procedure ;
+53           * Output or text editor commands as SAS statements. WPGM is a ;
+54           * Windows command that changes the active window to the editor;
+55           * window that was last edited.                                ;
+56         
+57           dm wpgm 'clear log' wpgm;
+58         
+59           * set a filename for the directory we need to read.           ;
+60           filename folder1 pipe "dir &logpath.\";
+61           filename folder2 pipe "dir &lstpath.\";
+62         
+63           data readlogs (keep = file_name log lst);
+64             infile folder1 truncover;
+65             length var1  $250. file_name $50.;
+66             input var1 $ 1-250;
+67         
+68             * If this is a directory/top directory listing then pull out and retain the folder name;
+69             * if index(var1,'Directory of') = 1 then folder_name = substr(var1,14,length(var1)-13);
+70         
+71             * delete header and footer information from directory listing;
+72             if var1 ne '' and index(var1,"<DIR>")= 0 and index(var1,"Volume in")=0 and
+73                index(var1,"Volume Serial")=0 and index(var1,"File(s)")=0 and index(var1,"Dir(s)")=0
+74                and index(var1,"Directory of")=0;
+75             * substring out file name, extentions, date and time stamps;
+76             file_name=substr(var1,40,50);
+77         
+78             * flag log and lst files for this folder;
+79             if index(upcase(file_name),".LOG")>0 then log=1;
+80             else log=0;
+81             if index(upcase(file_name),".LST")>0 then lst=1;
+82             else lst=0;
+83         
+84           run;
+85         
+86           data readlsts (keep = file_name log lst);
+87             infile folder2 truncover;
+88             length var1  $250. file_name $50.;
+89             input var1 $ 1-250;
+90         
+91             * If this is a directory/top directory listing then pull out and retain the folder name;
+92            * if index(var1,'Directory of') = 1 then folder_name = substr(var1,14,length(var1)-13);
+93         
+94             * delete header and footer information from directory listing;
+95             if var1 ne '' and index(var1,"<DIR>")= 0 and index(var1,"Volume in")=0 and
+96                index(var1,"Volume Serial")=0 and index(var1,"File(s)")=0 and index(var1,"Dir(s)")=0
+97                and index(var1,"Directory of")=0;
+98             * substring out file name, extentions, date and time stamps;
+99             file_name=substr(var1,40,50);
+100        
+101            * flag log and lst files for this folder;
+102            if index(upcase(file_name),".LOG")>0 then log=1;
+103            else log=0;
+104            if index(upcase(file_name),".LST")>0 then lst=1;
+105            else lst=0;
+106        
+107          run;
+108        
+109          * comment this print statment back in if you need more info about the directory;
+110          /*
+111          title "Directory listing that we are checking";
+112          proc print data=folder_&folder_count;
+113          run;
+114          title;
+115          */
+116        
+117          data logs_&folder_count. lsts_&folder_count.;
+118            set readlogs readlsts;
+119            if log=1 then output logs_&folder_count.;
+120            if lst=1 then output lsts_&folder_count.;
+121          run;
+122        
+123          proc sort data= logs_&folder_count nodupkey; by file_name log lst; run;
+124          proc sort data= lsts_&folder_count nodupkey; by file_name log lst; run;
+125        
+126          * run numobs to get the number to check.;
+127          %numobs(logs_&folder_count., logs_&folder_count.);
+128          %numobs(lsts_&folder_count., lsts_&folder_count.);
+129        
+130          * Output the file names of all log files to macro variables;
+131          data _null_;
+132            set logs_&folder_count. end=last ;
+133            length vbl $6.;
+134            vbl = compress("log"||_n_);
+135            call symput(vbl,left(trim(file_name)));
+136          run;
+137        
+138          * Output the file names of all lst files to macro variables;
+139          data _null_;
+140            set lsts_&folder_count. ;
+141            length vbl $6.;
+142            vbl = compress("lst"||_n_);
+143            call symput(vbl,left(trim(file_name)));
+144          run;
+145        
+146          %macro logfile;
+147        
+148            %if &&logs_&folder_count. ne 0 %then %do i = 1 %to &&logs_&folder_count.;
+149        
+150              filename log&i. "&logpath.\&&log&i";
+151        
+152              * read in the log file line by line;
+153              data logs_&folder_count._&i. (keep = filename folder nume numw numi numr numa numn);
+154                format line  $char300. filename logname $char100. folder $15.;
+155                infile log&i. dsd truncover lrecl=5000 end=last;
+156        
+157                * initialize counts to zero and retain through the data step;
+158                if _n_ = 1 then do;
+159                  nume = 0;
+160                  numw = 0;
+161                  numi = 0;
+162                  numr = 0;
+163                  numa = 0;
+164                  numn = 0;
+165                end;
+166                retain nume numw numi numr numa numn;
+167        
+168                * pull in each line in the log file;
+169                input @1 line $char300.;
+170        
+171                * look for the words ERROR, WARNING, and UNINITIALIZED;
+172                * if you find them increment the appropriate counts.  ;
+173                if index(upcase(line),'ERROR')>0
+174                  and index(upcase(line),'ERROR(FALSE)')=0
+175                  and index(upcase(line),'ERROR(TRUE)')=0
+176                  and index(upcase(line),'ERROR CHECK')=0
+177                  and index(upcase(line),'ERROR-CHECK')=0
+178                  and index(upcase(line),'ERROR BOX')=0
+179                  and index(upcase(line),'ERROR DETECT')=0
+180                  and index(upcase(line),'ERROR-DETECT')=0
+181                  then nume = nume + 1;
+182                if index(upcase(line),'WARNING')>0
+183                  and index(upcase(line),"UNABLE TO COPY SASUSER")=0
+184                  and index(upcase(line),'DATA TOO LONG FOR COLUMN')=0
+185                  and index(upcase(line),'MULTIPLE LENGTHS WERE SPECIFIED FOR THE BY VARIABLE SAS_NAME')=0
+186                  and index(upcase(line),'WARNING BOX')=0
+187                  and index(upcase(line),'POP UP A WARNING')=0
+188                  and index(upcase(line),'WARNING WILL POP')=0
+189                  then numw = numw + 1;
+190                if index(upcase(line),'UNINITIALIZED')>0 then numi = numi + 1;
+191                if index(upcase(line),'REPEAT OF BY')>0 or
+192                   index(upcase(line),'REPEATS OF BY')>0 then numr = numr + 1;
+193                if index(upcase(line),'UNABLE')>0
+194                   and index(upcase(line),'UNABLE TO OPEN SASUSER')=0
+195                   and index(upcase(line),"UNABLE TO COPY SASUSER")=0
+196                   and index(upcase(line),'"UNABLE TO DO"')=0
+197                   and index(upcase(line),"TEMPLATE 'STYLES.XLPRINT' WAS UNABLE TO WRITE")=0
+198                   then numa = numa + 1;
+199                if index(upcase(line),'NOT EXIST')>0
+200                   and index(upcase(line),'BASE DATA SET DOES NOT EXIST. DATA FILE IS BEING COPIED TO BASE FILE')=0
+201                   then numn = numn + 1;
+202        
+203                if last then do;
+204                  logname = "&&log&i";
+205                  filename = substr(logname,1,index(logname,".")-1);
+206                  folder="&folder";
+207                  output;
+208                end;
+209              run;
+210        
+211              proc append data=logs_&folder_count._&i. base=logs;
+212              run;
+213        
+214            %end;
+215        
+216          %mend logfile;
+217          %logfile;
+218        
+219          %macro lstfile;
+220        
+221            %if &&lsts_&folder_count. ne 0 %then %do i = 1 %to &&lsts_&folder_count.;
+222        
+223              filename lst&i. "&lstpath.\&&lst&i";
+224        
+225              * read in the log file line by line;
+226              data lsts_&folder_count._&i. (keep = filename folder nump);
+227                format line  $char300. filename lstname $char100. folder $15.;
+228                infile lst&i. dsd truncover lrecl=5000 end=last;
+229        
+230                * initialize count to zero and retain through the data step;
+231                if _n_ = 1 then do;
+232                  nump = 0;
+233                end;
+234                retain nump;
+235        
+236                * pull in each line in the log file;
+237                input @1 line $char300.;
+238        
+239                * Look for the word PROBLEM (as long as it is not related to any variables named PROBLEM_xxx).;
+240                if index(upcase(line),'PROBLEM')>0 and index(upcase(line),'PROBLEM_')=0
+241                  and index(upcase(line),'PROBLEM CASES PRINT')=0
+242                  and index(upcase(line),'PROBLEM OBSERVATIONS (IF ANY) WILL BE PRINTED')=0
+243                  and index(upcase(line),'PRINTING PROBLEM')=0 then nump = nump + 1;
+244        
+245                if last then do;
+246                  lstname = "&&lst&i";
+247                  filename = substr(lstname,1,index(lstname,".")-1);
+248                  folder="&folder";
+249                  output;
+250                end;
+251              run;
+252        
+253              proc append data=lsts_&folder_count._&i. base=lsts;
+254              run;
+255        
+256            %end;
+257        
+258          %mend lstfile;
+259          %lstfile;
+260        
+261        %mend foldercheck;
+262        
+263        * Create blank log/lst datasets that we will append to;
+264        data logs (keep = filename folder nume numw numi numr numa numn)
+265             lsts (keep = filename folder nump);
+266          format filename lstname $char100. folder $15. nume numw numi numr numa numn nump 8.;
+267          filename = '';
+268          folder = '';
+269          array nums (*) _numeric_;
+270          do i = 1 to dim(nums); nums(i) = .; end;
+271          if filename ne '';
+272        run;
+
+NOTE: Variable lstname is uninitialized.
+NOTE: The data set WORK.LOGS has 0 observations and 8 variables.
+NOTE: The data set WORK.LSTS has 0 observations and 3 variables.
+NOTE: DATA statement used (Total process time):
+      real time           0.08 seconds
+      cpu time            0.04 seconds
+      
+
+273        
+274        
+275        * intialize the folder count to be zero;
+276        %let folder_count = 0;
+277        
+278        ************  HERE IS WHERE YOU CALL THE LOG-CHECKING MACRO   ************;
+279        %foldercheck(folder=example_logs);
+
+NOTE: The infile FOLDER1 is:
+      Unnamed Pipe Access Device,
+      PROCESS=dir C:\Users\mhudson\marias_projects\SAS_Log_Checker\example_logs\,
+      RECFM=V,LRECL=32767
+
+NOTE: 12 records were read from the infile FOLDER1.
+      The minimum record length was 0.
+      The maximum record length was 75.
+NOTE: The data set WORK.READLOGS has 3 observations and 3 variables.
+NOTE: DATA statement used (Total process time):
+      real time           0.10 seconds
+      cpu time            0.01 seconds
+      
+
+
+NOTE: The infile FOLDER2 is:
+      Unnamed Pipe Access Device,
+      PROCESS=dir C:\Users\mhudson\marias_projects\SAS_Log_Checker\example_logs\,
+      RECFM=V,LRECL=32767
+
+NOTE: 12 records were read from the infile FOLDER2.
+      The minimum record length was 0.
+      The maximum record length was 75.
+NOTE: The data set WORK.READLSTS has 3 observations and 3 variables.
+NOTE: DATA statement used (Total process time):
+      real time           0.09 seconds
+      cpu time            0.01 seconds
+      
+
+
+NOTE: There were 3 observations read from the data set WORK.READLOGS.
+NOTE: There were 3 observations read from the data set WORK.READLSTS.
+NOTE: The data set WORK.LOGS_1 has 6 observations and 3 variables.
+NOTE: The data set WORK.LSTS_1 has 0 observations and 3 variables.
+NOTE: DATA statement used (Total process time):
+      real time           0.03 seconds
+      cpu time            0.01 seconds
+      
+
+
+NOTE: There were 6 observations read from the data set WORK.LOGS_1.
+NOTE: 3 observations with duplicate key values were deleted.
+NOTE: The data set WORK.LOGS_1 has 3 observations and 3 variables.
+NOTE: PROCEDURE SORT used (Total process time):
+      real time           0.02 seconds
+      cpu time            0.01 seconds
+      
+
+
+NOTE: Input data set is empty.
+NOTE: 0 observations with duplicate key values were deleted.
+NOTE: The data set WORK.LSTS_1 has 0 observations and 3 variables.
+NOTE: PROCEDURE SORT used (Total process time):
+      real time           0.01 seconds
+      cpu time            0.01 seconds
+      
+
+
+NOTE: Numeric values have been converted to character values at the places given by: (Line):(Column).
+      279:119   
+NOTE: There were 3 observations read from the data set WORK.LOGS_1.
+NOTE: DATA statement used (Total process time):
+      real time           0.00 seconds
+      cpu time            0.00 seconds
+      
+
+
+NOTE: Numeric values have been converted to character values at the places given by: (Line):(Column).
+      279:78   
+NOTE: There were 0 observations read from the data set WORK.LSTS_1.
+NOTE: DATA statement used (Total process time):
+      real time           0.00 seconds
+      cpu time            0.01 seconds
+      
+
+
+NOTE: The infile LOG1 is:
+      Filename=C:\Users\mhudson\marias_projects\SAS_Log_Checker\example_logs\01_DataQualityChecks.log,
+      RECFM=V,LRECL=5000,File Size (bytes)=3274,
+      Last Modified=19Oct2020:16:13:26,
+      Create Time=02Nov2020:09:54:10
+
+NOTE: 69 records were read from the infile LOG1.
+      The minimum record length was 0.
+      The maximum record length was 151.
+NOTE: The data set WORK.LOGS_1_1 has 1 observations and 8 variables.
+NOTE: DATA statement used (Total process time):
+      real time           0.02 seconds
+      cpu time            0.01 seconds
+      
+
+
+NOTE: Appending WORK.LOGS_1_1 to WORK.LOGS.
+NOTE: There were 1 observations read from the data set WORK.LOGS_1_1.
+NOTE: 1 observations added.
+NOTE: The data set WORK.LOGS has 1 observations and 8 variables.
+NOTE: PROCEDURE APPEND used (Total process time):
+      real time           0.08 seconds
+      cpu time            0.04 seconds
+      
+
+
+NOTE: The infile LOG2 is:
+      Filename=C:\Users\mhudson\marias_projects\SAS_Log_Checker\example_logs\02_CreateAnalysisVariables.log,
+      RECFM=V,LRECL=5000,File Size (bytes)=2962,
+      Last Modified=22Oct2020:08:28:18,
+      Create Time=02Nov2020:09:54:11
+
+NOTE: 63 records were read from the infile LOG2.
+      The minimum record length was 0.
+      The maximum record length was 137.
+NOTE: The data set WORK.LOGS_1_2 has 1 observations and 8 variables.
+NOTE: DATA statement used (Total process time):
+      real time           0.02 seconds
+      cpu time            0.01 seconds
+      
+
+
+NOTE: Appending WORK.LOGS_1_2 to WORK.LOGS.
+NOTE: There were 1 observations read from the data set WORK.LOGS_1_2.
+NOTE: 1 observations added.
+NOTE: The data set WORK.LOGS has 2 observations and 8 variables.
+NOTE: PROCEDURE APPEND used (Total process time):
+      real time           0.02 seconds
+      cpu time            0.00 seconds
+      
+
+
+NOTE: The infile LOG3 is:
+      Filename=C:\Users\mhudson\marias_projects\SAS_Log_Checker\example_logs\04_LogisticRegression.log,
+      RECFM=V,LRECL=5000,File Size (bytes)=4239195,
+      Last Modified=22Oct2020:09:48:14,
+      Create Time=02Nov2020:09:54:22
+
+NOTE: 76295 records were read from the infile LOG3.
+      The minimum record length was 0.
+      The maximum record length was 161.
+NOTE: The data set WORK.LOGS_1_3 has 1 observations and 8 variables.
+NOTE: DATA statement used (Total process time):
+      real time           0.34 seconds
+      cpu time            0.34 seconds
+      
+
+
+NOTE: Appending WORK.LOGS_1_3 to WORK.LOGS.
+NOTE: There were 1 observations read from the data set WORK.LOGS_1_3.
+NOTE: 1 observations added.
+NOTE: The data set WORK.LOGS has 3 observations and 8 variables.
+NOTE: PROCEDURE APPEND used (Total process time):
+      real time           0.02 seconds
+      cpu time            0.01 seconds
+      
+
+280        
+281        proc sort data=logs;
+282          by folder filename;
+283        run;
+
+NOTE: There were 3 observations read from the data set WORK.LOGS.
+NOTE: The data set WORK.LOGS has 3 observations and 8 variables.
+NOTE: PROCEDURE SORT used (Total process time):
+      real time           0.01 seconds
+      cpu time            0.00 seconds
+      
+
+284        
+285        proc sort data=lsts;
+286          by folder filename;
+287        run;
+
+NOTE: Input data set is empty.
+NOTE: The data set WORK.LSTS has 0 observations and 3 variables.
+NOTE: PROCEDURE SORT used (Total process time):
+      real time           0.02 seconds
+      cpu time            0.00 seconds
+      
+
+288        
+289        data allfiles;
+290          merge logs lsts;
+291          by folder filename;
+292        run;
+
+NOTE: There were 3 observations read from the data set WORK.LOGS.
+NOTE: There were 0 observations read from the data set WORK.LSTS.
+NOTE: The data set WORK.ALLFILES has 3 observations and 9 variables.
+NOTE: DATA statement used (Total process time):
+      real time           0.03 seconds
+      cpu time            0.01 seconds
+      
+
+293        
+294        * print results to lst file;
+295        data _null_;
+296          set allfiles end=last;
+297          by folder;
+298          length folderprint $25.;
+299          folderprint = "Folder "||left(trim(folder));
+300          file print;
+301        
+302          if _n_ = 1 then do;
+303            put @1
+303      ! "**********************************************************************************************************************************";
+304            put @1 "*" @130 "*";
+305            put @1 "* Summary issues found in log files" @130 "*";
+306            put @1 "*" @130 "*";
+307          end;
+308        
+309          if first.folder then do;
+310            put @1
+310      ! "**********************************************************************************************************************************";
+311            put @1 "*" @35 folderprint @130 "*";
+312            put @1
+312      ! "**********************************************************************************************************************************";
+313            put @1 "*" @130 "*";
+314            put @1 "*"           @40 " Number"                                @70 "    Number"     @85 "    Number"     @100 "    Number"     @115
+314      ! "    Number"     @130 "*";
+315            put @1 "*"           @40 " of LST " @50 "Number"  @60 " Number"   @70 "   of LOG"      @85 "   of LOG"      @100 "   of times"    @115
+315      ! "  of time we"   @130 "*";
+316            put @1 "*"           @40 "Possible" @50 "of LOG"  @60 " of LOG"   @70 "Uninitialized"  @85 " REPEAT of BY"  @100 "  we see the "  @115
+316      ! " see the words" @130 "*";
+317            put @1 "* Filename"  @40 "Problems" @50 "Errors"  @60 "Warnings"  @70 "  Variables"    @85 "  Variables "   @100 "  word UNABLE"  @115
+317      ! "  NOT EXIST  "  @130 "*";
+318            put @1 "* --------"  @40 "--------" @50 "------"  @60 "---------" @70 "-------------"  @85 "--------------" @100 "--------------" @115
+318      ! "--------------" @130 "*";
+319            put @1 "*" @130 "*";
+320          end;
+321          put @1 "* " filename    @42 nump  @52 nume   @62 numw  @76 numi   @91 numr @106 numa @121 numn @130 "*";
+322          if last then put @1
+322      ! "**********************************************************************************************************************************";
+323        
+324        run;
+
+NOTE: 18 lines were written to file PRINT.
+NOTE: There were 3 observations read from the data set WORK.ALLFILES.
+NOTE: The DATA step printed page 1.
+NOTE: DATA statement used (Total process time):
+      real time           0.00 seconds
+      cpu time            0.01 seconds
+      
+
+NOTE: SAS Institute Inc., SAS Campus Drive, Cary, NC USA 27513-2414
+NOTE: The SAS System used:
+      real time           2.16 seconds
+      cpu time            1.56 seconds
+      

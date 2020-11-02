@@ -1,0 +1,63 @@
+1                                                          The SAS System                           08:22 Thursday, October 22, 2020
+
+NOTE: Unable to open SASUSER.REGSTRY. WORK.REGSTRY will be opened instead.
+NOTE: All registry changes will be lost at the end of the session.
+
+WARNING: Unable to copy SASUSER registry to WORK registry. Because of this, you will not see registry customizations during this 
+         session.
+NOTE: Unable to open SASUSER.PROFILE. WORK.PROFILE will be opened instead.
+NOTE: All profile changes will be lost at the end of the session.
+NOTE: Copyright (c) 2002-2012 by SAS Institute Inc., Cary, NC, USA. 
+NOTE: SAS (r) Proprietary Software 9.4 (TS1M3) 
+      Licensed to MATHEMATICA POLICY RESEARCH INC, Site 70083794.
+NOTE: This session is executing on the X64_8PRO  platform.
+
+
+
+NOTE: Updated analytical products:
+      
+      SAS/STAT 14.1
+      SAS/ETS 14.1
+      SAS/IML 14.1
+
+NOTE: Additional host information:
+
+ X64_8PRO WIN 6.2.9200  Workstation
+
+NOTE: SAS initialization used:
+      real time           0.32 seconds
+      cpu time            0.20 seconds
+      
+1          *********************************************************************************;
+2          * PROGRAM:  02_CreateAnalysisVariables.sas                                       ;
+3          * PURPOSE:  Create analysis variables and add to the IPUMS initial dataset       ;
+4          * DATE:     December 2019                                                        ;
+5          * AUTHOR:   Maria Cupples Hudson                                                 ;
+6          * INPUT:    Merged HH and Person data from 00 program                            ;
+7          * OUTPUT:   Output with results of qualtiy checks                                ;
+8          * UPDATED:                                                                       ;
+9          *********************************************************************************;
+10         ods _all_ close; ods listing;
+11         
+12         options nocenter mlogic mprint noxwait noxsync nofmterr
+13                 formchar='|----|+|---+=|-/\<>*' ls=150;
+14         
+15         %let top_folder = N:\Project\50890_1115_DSC\NJ1\700_Enrollment_impact\T07.710_Build_estimation_framework\BY\Data and programs;
+16         
+17         * The ACS year we are processing;
+18         %let year = 2018;
+19         
+20         proc printto log="&top_folder\Programs_ACS&year.\02_CreateAnalysisVariables&year..log"
+21                    print="&top_folder\Programs_ACS&year.\02_CreateAnalysisVariables&year..lst" new;
+22         run;
+
+NOTE: PROCEDURE PRINTTO used (Total process time):
+      real time           0.06 seconds
+      cpu time            0.00 seconds
+      
+
+NOTE: SAS Institute Inc., SAS Campus Drive, Cary, NC USA 27513-2414
+NOTE: The SAS System used:
+      real time           5:30.62
+      cpu time            1:31.17
+      

@@ -1,0 +1,19 @@
+                                                                    The SAS System                                  13:38 Monday, November 2, 2020   1
+**********************************************************************************************************************************
+*                                                                                                                                *
+* Summary issues found in log files                                                                                              *
+*                                                                                                                                *
+**********************************************************************************************************************************
+*                                 Folder example_logs                                                                            *
+**********************************************************************************************************************************
+*                                                                                                                                *
+*                                       Number                           Number         Number         Number         Number     *
+*                                       of LST   Number     Number      of LOG         of LOG         of times      of time we   *
+*                                      Possible  of LOG     of LOG   Uninitialized   REPEAT of BY    we see the    see the words *
+* Filename                             Problems  Errors    Warnings    Variables      Variables      word UNABLE    NOT EXIST    *
+* --------                             --------  ------    --------- -------------  -------------- -------------- -------------- *
+*                                                                                                                                *
+* 01_DataQualityChecks                   .         0         0             0              0              0              0        *
+* 02_CreateAnalysisVariables             .         0         0             0              0              0              0        *
+* 04_LogisticRegression                  .         7         112           0              0              0              0        *
+**********************************************************************************************************************************
