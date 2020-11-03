@@ -33,7 +33,6 @@ options ls = 150  pagesize=max;
   %let closing_code=%sysfunc(close(&datasetid));
 %mend numobs;
 
-%let folder=example_logs;
 %macro foldercheck(folder=);
 
   * increment the folder count so we can track folders without  ;
@@ -65,15 +64,15 @@ options ls = 150  pagesize=max;
     length var1  $250. file_name $50.;
     input var1 $ 1-250; 
 
-    * If this is a directory/top directory listing then pull out and retain the folder name;
-    * if index(var1,'Directory of') = 1 then folder_name = substr(var1,14,length(var1)-13);
-
     * delete header and footer information from directory listing;
     if var1 ne '' and index(var1,"<DIR>")= 0 and index(var1,"Volume in")=0 and
        index(var1,"Volume Serial")=0 and index(var1,"File(s)")=0 and index(var1,"Dir(s)")=0
        and index(var1,"Directory of")=0;
     * substring out file name, extentions, date and time stamps;
     file_name=substr(var1,40,50);
+
+    * Delete the log/lst of this program from consideration;
+    if index(upcase(var1),'CHECK_ALL_LOGS')>0 then delete;
 
     * flag log and lst files for this folder;
     if index(upcase(file_name),".LOG")>0 then log=1;
@@ -88,15 +87,15 @@ options ls = 150  pagesize=max;
     length var1  $250. file_name $50.;
     input var1 $ 1-250; 
 
-    * If this is a directory/top directory listing then pull out and retain the folder name;
-   * if index(var1,'Directory of') = 1 then folder_name = substr(var1,14,length(var1)-13);
-
     * delete header and footer information from directory listing;
     if var1 ne '' and index(var1,"<DIR>")= 0 and index(var1,"Volume in")=0 and
        index(var1,"Volume Serial")=0 and index(var1,"File(s)")=0 and index(var1,"Dir(s)")=0
        and index(var1,"Directory of")=0;
     * substring out file name, extentions, date and time stamps;
     file_name=substr(var1,40,50);
+
+    * Delete the log/lst of this program from consideration;
+    if index(upcase(var1),'CHECK_ALL_LOGS')>0 then delete;
 
     * flag log and lst files for this folder;
     if index(upcase(file_name),".LOG")>0 then log=1;
@@ -193,7 +192,6 @@ options ls = 150  pagesize=max;
         if index(upcase(line),'UNABLE')>0 
            and index(upcase(line),'UNABLE TO OPEN SASUSER')=0 
            and index(upcase(line),"UNABLE TO COPY SASUSER")=0 
-           and index(upcase(line),'"UNABLE TO DO"')=0 
            and index(upcase(line),"TEMPLATE 'STYLES.XLPRINT' WAS UNABLE TO WRITE")=0
            then numa = numa + 1;
         if index(upcase(line),'NOT EXIST')>0 
@@ -276,6 +274,7 @@ run;
 %let folder_count = 0;
 
 ************  HERE IS WHERE YOU CALL THE LOG-CHECKING MACRO   ************;
+%foldercheck(folder=); 
 %foldercheck(folder=example_logs); 
 
 proc sort data=logs;
